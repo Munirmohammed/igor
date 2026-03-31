@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model CallSession {
+  id              String           @id @default(uuid())
+  startTime       DateTime         @default(now())
+  endTime         DateTime?
+  callerId        String
+  recipientId     String
+  status          String           @default("ongoing") // ongoing, completed, failed
+  ipAddress       String?
+  audioUrl        String?
+  geolocatedCity  String?
+  geolocatedLat   Float?
+  geolocatedLong  Float?
+  injectedData    InjectedData?
+}
+
+model InjectedData {
+  id              String      @id @default(uuid())
+  callSessionId   String      @unique
+  callSession     CallSession @relation(fields: [callSessionId], references: [id])
+  gps_coordinates String?
+  facial_match    String?     // JSON or description
+  camera_hits     String?     // List of camera IDs or URLs
+  satellite_intel String?
+  receivedAt      DateTime    @default(now())
+}
+
+model Dossier {
+  id              String      @id @default(uuid())
+  callSessionId   String      @unique
+  compiledAt      DateTime    @default(now())
+  status          String      @default("sent") // pending, sent, failed
+  adminEmail      String      @default("admin@shopyle.com")
+  content         String      // Summary content / JSON
+}

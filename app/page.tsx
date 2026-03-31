@@ -1,66 +1,72 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import StatsCards from "@/components/StatsCards";
+import CallMonitor from "@/components/CallMonitor";
+import IntelFeed from "@/components/IntelFeed";
+import { Zap, Shield, Cpu, Activity } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="flex flex-col gap-10">
+      {/* Header Section */}
+      <header className="flex justify-between items-end mb-4 group">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tighter text-white mb-2 group-hover:text-emerald-400 transition-colors">
+            Mission Control
+          </h1>
+          <p className="text-muted text-sm font-medium uppercase tracking-[0.2em]">
+            Operational Awareness & Intelligence Hub
           </p>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex gap-4">
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2 text-emerald-500 font-bold text-xs uppercase tracking-widest px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+              <Activity size={14} className="animate-pulse" />
+              <span>System Online</span>
+            </div>
+            <span className="text-[10px] text-muted font-bold tracking-widest uppercase">Uptime: 24h 12m 04s</span>
+          </div>
         </div>
-      </main>
+      </header>
+
+      {/* KPI Section */}
+      <StatsCards />
+
+      {/* Main Content Grid */}
+      <div className="flex gap-8 items-start">
+        <CallMonitor />
+        <IntelFeed />
+      </div>
+
+      {/* System Status Footer */}
+      <footer className="mt-auto pt-10 border-t border-white/5 grid grid-cols-4 gap-8">
+        <div className="flex items-center gap-3 glass-card !p-4 hover:!bg-white/5 pointer-events-none">
+          <Zap className="text-emerald-500 w-4 h-4" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-muted font-bold uppercase tracking-widest">Call Processor</span>
+            <span className="text-xs font-bold text-white uppercase">Operational</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 glass-card !p-4 hover:!bg-white/5 pointer-events-none">
+          <Shield className="text-blue-500 w-4 h-4" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-muted font-bold uppercase tracking-widest">Intelligence Link</span>
+            <span className="text-xs font-bold text-white uppercase">Secured</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 glass-card !p-4 hover:!bg-white/5 pointer-events-none">
+          <Cpu className="text-amber-500 w-4 h-4" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-muted font-bold uppercase tracking-widest">Tracing Patch</span>
+            <span className="text-xs font-bold text-white uppercase">Active</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 glass-card !p-4 hover:!bg-white/5 pointer-events-none">
+          <Activity className="text-purple-500 w-4 h-4" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-muted font-bold uppercase tracking-widest">Dossier Queue</span>
+            <span className="text-xs font-bold text-white uppercase">Empty</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
