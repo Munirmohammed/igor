@@ -4,39 +4,56 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model CallSession {
-  id              String           @id @default(uuid())
-  startTime       DateTime         @default(now())
-  endTime         DateTime?
-  callerId        String
-  recipientId     String
-  status          String           @default("ongoing") // ongoing, completed, failed
-  ipAddress       String?
-  audioUrl        String?
-  geolocatedCity  String?
-  geolocatedLat   Float?
-  geolocatedLong  Float?
-  injectedData    InjectedData?
+  id             String        @id @default(uuid())
+  startTime      DateTime      @default(now())
+  endTime        DateTime?
+  callerId       String
+  callerName     String?
+  recipientId    String
+  status         String        @default("ongoing")
+  direction      String        @default("outbound")
+  duration       Int?
+  ipAddress      String?
+  geoCity        String?
+  geoCountry     String?
+  geoLat         Float?
+  geoLon         Float?
+  audioUrl       String?
+  notes          String?
+  injectedData   InjectedData?
+  dossier        Dossier?
 }
 
 model InjectedData {
-  id              String      @id @default(uuid())
-  callSessionId   String      @unique
-  callSession     CallSession @relation(fields: [callSessionId], references: [id])
-  gps_coordinates String?
-  facial_match    String?     // JSON or description
-  camera_hits     String?     // List of camera IDs or URLs
-  satellite_intel String?
-  receivedAt      DateTime    @default(now())
+  id              String       @id @default(uuid())
+  callSessionId   String       @unique
+  callSession     CallSession  @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
+  gpsCoordinates  String?
+  facialMatch     String?
+  cameraHits      String?
+  satelliteIntel  String?
+  extraPayload    String?
+  receivedAt      DateTime     @default(now())
 }
 
 model Dossier {
-  id              String      @id @default(uuid())
-  callSessionId   String      @unique
-  compiledAt      DateTime    @default(now())
-  status          String      @default("sent") // pending, sent, failed
-  adminEmail      String      @default("admin@shopyle.com")
-  content         String      // Summary content / JSON
+  id            String       @id @default(uuid())
+  callSessionId String       @unique
+  callSession   CallSession  @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
+  compiledAt    DateTime     @default(now())
+  status        String       @default("pending")
+  adminEmail    String       @default("admin@shopyle.com")
+  content       String
+}
+
+model Agent {
+  id          String   @id @default(uuid())
+  name        String
+  extension   String   @unique
+  status      String   @default("offline")
+  createdAt   DateTime @default(now())
 }
