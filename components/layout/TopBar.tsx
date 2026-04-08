@@ -14,9 +14,9 @@ export default function TopBar() {
   }, []);
 
   return (
-    <header className="h-14 shrink-0 bg-[#0d0d0d] border-b border-white/[0.06] flex items-center gap-4 px-6">
+    <header className="h-14 shrink-0 bg-[#0d0d0d] border-b border-white/[0.06] flex items-center gap-4 px-4 md:px-6">
       {/* Search */}
-      <div className="flex items-center gap-2 flex-1 max-w-sm bg-white/[0.03] border border-white/[0.07] rounded-lg px-3 py-2">
+      <div className="hidden sm:flex items-center gap-2 flex-1 max-w-sm bg-white/[0.03] border border-white/[0.07] rounded-lg px-3 py-2">
         <Search size={14} className="text-[#444]" />
         <input
           className="bg-transparent text-sm text-white placeholder-[#444] outline-none w-full font-medium"
@@ -27,7 +27,7 @@ export default function TopBar() {
       <div className="flex-1" />
 
       {/* Clock */}
-      <span className="font-mono text-xs text-[#444] tracking-widest">{time}</span>
+      <span className="hidden md:inline font-mono text-xs text-[#444] tracking-widest">{time}</span>
 
       {/* Notifications */}
       <button className="relative w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.05] transition-colors">

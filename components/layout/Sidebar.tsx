@@ -24,7 +24,7 @@ const nav = [
 export default function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="w-56 shrink-0 bg-[#0d0d0d] border-r border-white/[0.06] flex flex-col h-screen">
+    <aside className="hidden md:flex w-56 shrink-0 bg-[#0d0d0d] border-r border-white/[0.06] flex-col h-screen">
       {/* Logo */}
       <div className="h-14 flex items-center gap-2.5 px-5 border-b border-white/[0.06]">
         <div className="w-7 h-7 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center">

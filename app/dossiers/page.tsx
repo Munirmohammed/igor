@@ -29,10 +29,10 @@ export default async function DossiersPage() {
       {dossiers.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-[#0d0d0d] border border-white/[0.06] rounded-xl">
           <FileText size={36} className="text-[#1a1a1a]" />
-          <p className="text-[#444] text-sm">No dossiers yet. End a call session to generate one.</p>
+          <p className="text-[#444] text-sm text-center px-4">No dossiers yet. End a call session to generate one.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto">
           {dossiers.map((d) => {
             const intel = d.callSession.injectedData;
             return (

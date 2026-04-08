@@ -154,11 +154,11 @@ export default function CallsPage() {
   const dialKeys = ['1','2','3','4','5','6','7','8','9','*','0','#'];
 
   return (
-    <div className="flex gap-6 h-full">
+    <div className="flex flex-col md:flex-row gap-6 h-full min-h-0">
       <Toaster position="top-right" toastOptions={{ style: { background: '#141414', color: '#fff', border: '1px solid #ffffff0f', fontSize: '13px' } }} />
 
       {/* Dialer Panel */}
-      <div className="w-80 shrink-0 flex flex-col gap-4">
+      <div className="w-full md:w-80 shrink-0 flex flex-col gap-4">
         <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl overflow-hidden">
           {/* Display */}
           <div className="p-5 border-b border-white/[0.06]">
@@ -294,7 +294,7 @@ export default function CallsPage() {
           <button onClick={fetchSessions} className="text-[11px] text-[#444] hover:text-white transition-colors font-medium">Refresh</button>
         </div>
 
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-auto flex-1">
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <Loader2 size={20} className="animate-spin text-[#333]" />
@@ -305,7 +305,8 @@ export default function CallsPage() {
               <p className="text-[#444] text-sm">No call sessions yet. Use the dialer to start.</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="min-w-[500px]">
+              <table className="w-full text-sm">
               <thead className="sticky top-0 bg-[#0d0d0d]">
                 <tr className="border-b border-white/[0.04]">
                   {['Caller', 'Location', 'Status', 'Duration', 'Started'].map(h => (
@@ -335,6 +336,7 @@ export default function CallsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
