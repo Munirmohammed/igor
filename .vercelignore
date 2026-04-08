@@ -1,0 +1,12 @@
+# Vercel Ignore
+prisma/dev.db
+prisma/dev.db-journal
+.env
+.env.local
+node_modules
+.next
+out
+build
+temp
+tmp
+*.log
