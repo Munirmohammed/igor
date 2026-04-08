@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Users, Circle, Plus, Phone } from 'lucide-react';
+export const dynamic = 'force-dynamic';
 import AddAgentForm from './AddAgentForm';
 
 async function getAgents() {
