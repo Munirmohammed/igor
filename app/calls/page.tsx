@@ -53,11 +53,9 @@ export default function CallsPage() {
       if (!res.ok) throw new Error(data.error);
 
       if (typeof window !== 'undefined') {
-        const { Device } = await import('@twilio/voice-sdk');
+        const { Device, Call } = await import('@twilio/voice-sdk');
         const newDevice = new Device(data.token, {
-          codecPreferences: ['opus', 'pcmu'],
-          fakeLocalDTMF: true,
-          enableRingingState: true,
+          codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
         });
 
         newDevice.on('registered', () => {
