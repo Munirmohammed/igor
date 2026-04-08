@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { formatDistanceToNow } from 'date-fns';
 import { Phone, PhoneOff, PhoneIncoming, Shield, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+export const dynamic = 'force-dynamic';
 
 async function getStats() {
   const [totalCalls, activeCalls, dossiers, agents] = await Promise.all([

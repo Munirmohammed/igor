@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { formatDistanceToNow } from 'date-fns';
 import { FileText, Shield, MapPin, User, Camera, Satellite, CheckCircle2, Clock, Mail } from 'lucide-react';
+export const dynamic = 'force-dynamic';
 
 async function getDossiers() {
   return prisma.dossier.findMany({
