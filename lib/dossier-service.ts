@@ -1,84 +1,112 @@
-import nodemailer from 'nodemailer';
 import { prisma } from '@/lib/prisma';
+import nodemailer from 'nodemailer';
 
-/**
- * DOSSIER SERVICE
- * Compiles gathered intelligence into a "Full Intelligence Dossier"
- * and emails it to admin@shopyle.com.
- */
 export async function compileAndSendDossier(callId: string) {
   try {
-    // 1. Fetch the Call Session and Injected Intelligence
     const session = await prisma.callSession.findUnique({
       where: { id: callId },
       include: { injectedData: true },
     });
 
     if (!session) {
-      console.error(`[DOSSIER ERROR] Session not found: ${callId}`);
+      console.error(`[DOSSIER] Session not found: ${callId}`);
       return;
     }
 
-    // 2. Format the Intelligence Report
-    const reportHtml = `
-      <div style="font-family: 'Outfit', sans-serif; background: #050505; color: #ffffff; padding: 40px; border-radius: 16px;">
-        <h1 style="color: #10b981; border-bottom: 2px solid #10b981; padding-bottom: 10px;">FULL INTELLIGENCE DOSSIER</h1>
-        <p style="color: #888888; text-transform: uppercase; font-size: 12px; letter-spacing: 2px;">CONFIDENTIAL - IGOR OS GENERATED</p>
-        
-        <div style="margin-top: 30px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px;">
-          <h3 style="color: #3b82f6;">Target Identification</h3>
-          <p><strong>Caller ID:</strong> ${session.callerId}</p>
-          <p><strong>Recipient:</strong> ${session.recipientId}</p>
-          <p><strong>Status:</strong> ${session.status.toUpperCase()}</p>
-          <p><strong>IP Address:</strong> ${session.ipAddress || 'Unknown'}</p>
-        </div>
+    const content = JSON.stringify({
+      sessionId: session.id,
+      caller: session.callerName || session.callerId,
+      recipient: session.recipientId,
+      direction: session.direction,
+      status: session.status,
+      duration: session.duration ? `${Math.floor(session.duration / 60)}m ${session.duration % 60}s` : null,
+      ip: session.ipAddress,
+      location: session.geoCity
+        ? `${session.geoCity}, ${session.geoCountry}`
+        : session.notes ?? 'Unknown',
+      coordinates: session.geoLat ? `${session.geoLat}, ${session.geoLon}` : null,
+      audioRecording: session.audioUrl ?? null,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      intelligence: session.injectedData
+        ? {
+            gps: session.injectedData.gpsCoordinates,
+            facialMatch: session.injectedData.facialMatch,
+            cameras: session.injectedData.cameraHits,
+            satellite: session.injectedData.satelliteIntel,
+            extra: session.injectedData.extraPayload,
+          }
+        : null,
+    }, null, 2);
 
-        <div style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px;">
-          <h3 style="color: #f59e0b;">Satellite & GPS Tracking</h3>
-          <p><strong>GPS Coordinates:</strong> ${session.injectedData?.gps_coordinates || 'Awaiting Sync'}</p>
-          <p><strong>Geo-Location (Fallback):</strong> ${session.geolocatedCity || 'Unknown'}</p>
-          <p><strong>Satellite Intel:</strong> ${session.injectedData?.satellite_intel || 'None provided'}</p>
-        </div>
-
-        <div style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px;">
-          <h3 style="color: #ef4444;">Intelligence Highlights</h3>
-          <p><strong>Facial Match:</strong> ${session.injectedData?.facial_match || 'No hits'}</p>
-          <p><strong>Camera Hits:</strong> ${session.injectedData?.camera_hits || 'None'}</p>
-        </div>
-
-        <p style="margin-top: 40px; font-size: 10px; color: #444444; border-top: 1px solid #222; padding-top: 20px;">
-          THIS REPORT WAS AUTOMATICALLY COMPILED AFTER DATA INJECTION. TRACING PATCH ACTIVE.
-        </p>
-      </div>
-    `;
-
-    // 3. Configure Email Transporter (Placeholder for Resend/Nodemailer)
-    // NOTE: In production, use ACTUAL credentials.
-    const transporter = nodemailer.createTransport({
-      host: "smtp.example.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: "admin@shopyle.com",
-        pass: "IGOR_SECRET_PASS",
-      },
-    });
-
-    console.log(`[DOSSIER COMPILED] Sending to admin@shopyle.com for Session: ${callId}`);
-
-    // Store the Dossier record
-    await prisma.dossier.create({
-      data: {
+    // Upsert dossier record
+    await prisma.dossier.upsert({
+      where: { callSessionId: callId },
+      update: { compiledAt: new Date(), status: 'sent', content },
+      create: {
         callSessionId: callId,
-        content: JSON.stringify(session),
         status: 'sent',
+        content,
+        adminEmail: 'admin@shopyle.com',
       },
     });
 
-    // In this demo, we'll just log it.
-    console.log(`[DOSSIER SENT] Successfully compiled and dispatched.`);
+    // Send email if SMTP is configured
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    const smtpPort = parseInt(process.env.SMTP_PORT ?? '587');
+    const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@shopyle.com';
 
-  } catch (error) {
-    console.error(`[DOSSIER ERROR]`, error);
+    if (smtpHost && smtpUser && smtpPass) {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+
+      await transporter.sendMail({
+        from: smtpUser,
+        to: adminEmail,
+        subject: `[IGOR] Intelligence Dossier — ${session.callerName || session.callerId}`,
+        html: `
+          <div style="font-family:monospace;background:#050505;color:#f0f0f0;padding:32px;border-radius:12px">
+            <h2 style="color:#00ff88;border-bottom:1px solid #00ff8830;padding-bottom:12px">
+              🛡️ IGOR Intelligence Dossier
+            </h2>
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <tr><td style="color:#666;padding:6px 0">Caller</td><td style="color:#fff;font-weight:bold">${session.callerName || session.callerId}</td></tr>
+              <tr><td style="color:#666;padding:6px 0">Recipient</td><td style="color:#fff">${session.recipientId}</td></tr>
+              <tr><td style="color:#666;padding:6px 0">Direction</td><td style="color:#fff;text-transform:uppercase">${session.direction}</td></tr>
+              <tr><td style="color:#666;padding:6px 0">Status</td><td style="color:#00ff88;text-transform:uppercase">${session.status}</td></tr>
+              <tr><td style="color:#666;padding:6px 0">Duration</td><td style="color:#fff">${session.duration ? `${Math.floor(session.duration / 60)}m ${session.duration % 60}s` : 'N/A'}</td></tr>
+              <tr><td style="color:#666;padding:6px 0">Location</td><td style="color:#fff">${session.geoCity ? `${session.geoCity}, ${session.geoCountry}` : (session.notes ?? 'Unknown')}</td></tr>
+              ${session.geoLat ? `<tr><td style="color:#666;padding:6px 0">Coordinates</td><td style="color:#00ff88;font-family:monospace">${session.geoLat}, ${session.geoLon}</td></tr>` : ''}
+              ${session.audioUrl ? `<tr><td style="color:#666;padding:6px 0">Recording</td><td><a href="${session.audioUrl}" style="color:#3b82f6">Listen / Download</a></td></tr>` : ''}
+            </table>
+            ${session.injectedData ? `
+            <h3 style="color:#f59e0b;margin-top:24px">Intelligence Injected</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <tr><td style="color:#666;padding:6px 0">GPS</td><td style="color:#fff">${session.injectedData.gpsCoordinates ?? 'N/A'}</td></tr>
+              <tr><td style="color:#666;padding:6px 0">Facial Match</td><td style="color:#fff">${session.injectedData.facialMatch ?? 'N/A'}</td></tr>
+              <tr><td style="color:#666;padding:6px 0">Cameras</td><td style="color:#fff">${session.injectedData.cameraHits ?? 'N/A'}</td></tr>
+              <tr><td style="color:#666;padding:6px 0">Satellite</td><td style="color:#fff">${session.injectedData.satelliteIntel ?? 'N/A'}</td></tr>
+            </table>
+            ` : ''}
+            <p style="color:#333;font-size:11px;margin-top:32px;border-top:1px solid #111;padding-top:16px">
+              Auto-generated by IGOR OS — ${new Date().toISOString()}
+            </p>
+          </div>
+        `,
+      });
+
+      console.log(`[DOSSIER SENT] Email dispatched to ${adminEmail} for session: ${callId}`);
+    } else {
+      console.log(`[DOSSIER] SMTP not configured — dossier saved to DB only. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env`);
+    }
+
+  } catch (e: any) {
+    console.error('[DOSSIER ERROR]', e.message);
   }
 }

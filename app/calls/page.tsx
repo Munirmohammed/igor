@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Delete, Loader2, MapPin, AlertCircle } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Delete, Loader2, MapPin, AlertCircle, RefreshCw } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import type { Call, Device } from '@twilio/voice-sdk';
 
 type CallState = 'idle' | 'dialing' | 'connected' | 'ending';
 
@@ -16,6 +17,7 @@ interface LiveCallSession {
   geoLat?: number;
   geoLon?: number;
   status: string;
+  callerName?: string;
 }
 
 export default function CallsPage() {
@@ -27,6 +29,8 @@ export default function CallsPage() {
   const [elapsed, setElapsed] = useState(0);
   const [sessions, setSessions] = useState<LiveCallSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [device, setDevice] = useState<Device | null>(null);
+  const [twilioCall, setTwilioCall] = useState<Call | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load existing sessions
@@ -37,7 +41,41 @@ export default function CallsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchSessions(); }, []);
+  useEffect(() => { 
+    fetchSessions(); 
+    setupTwilio();
+  }, []);
+
+  const setupTwilio = async () => {
+    try {
+      const res = await fetch('/api/twilio/token');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (typeof window !== 'undefined') {
+        const { Device } = await import('@twilio/voice-sdk');
+        const newDevice = new Device(data.token, {
+          codecPreferences: ['opus', 'pcmu'],
+          fakeLocalDTMF: true,
+          enableRingingState: true,
+        });
+
+        newDevice.on('registered', () => {
+          toast.success('VoIP System Online (WebRTC)');
+        });
+
+        newDevice.on('error', (err: any) => {
+          console.error('Twilio Voice Error:', err);
+          toast.error(`VoIP Error: ${err.message}`);
+        });
+
+        await newDevice.register();
+        setDevice(newDevice);
+      }
+    } catch (e: any) {
+      toast.error('Failed to configure VoIP. Check Settings.');
+    }
+  };
 
   // Timer for active call
   useEffect(() => {
@@ -57,21 +95,44 @@ export default function CallsPage() {
 
   const startCall = async () => {
     if (!dialpad.trim()) { toast.error('Enter a number to dial'); return; }
+    if (!device) { toast.error('VoIP not ready. Check Twilio settings.'); return; }
+
     setCallState('dialing');
 
     try {
-      const res = await fetch('/api/calls', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callerId: dialpad, callerName: callerName || dialpad, recipientId: 'IGOR-HQ', direction: 'outbound' }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      // Connect out via Twilio WebRTC
+      const call = await device.connect({ params: { To: dialpad, From: 'IGOR-Agent' } });
+      setTwilioCall(call);
 
-      setActiveSession(data.session);
-      setCallState('connected');
-      toast.success(`Call started — Tracing ${dialpad}`);
-      fetchSessions();
+      // Setup call event listeners
+      call.on('accept', () => {
+        setCallState('connected');
+        toast.success(`Call Connected`);
+        setActiveSession({
+          id: 'temp-live',
+          callerId: dialpad,
+          recipientId: 'IGOR-HQ',
+          startTime: new Date().toISOString(),
+          status: 'ongoing'
+        });
+        fetchSessions();
+      });
+
+      call.on('disconnect', () => {
+        setCallState('idle');
+        setTwilioCall(null);
+        setActiveSession(null);
+        toast.success('Call ended — Dossier pipeline checking');
+        fetchSessions();
+      });
+
+      call.on('error', (err: any) => {
+        setCallState('idle');
+        setTwilioCall(null);
+        setActiveSession(null);
+        toast.error(`Call Error: ${err.message}`);
+      });
+
     } catch (e: any) {
       toast.error(e.message ?? 'Failed to start call');
       setCallState('idle');
@@ -79,24 +140,16 @@ export default function CallsPage() {
   };
 
   const endCall = async () => {
-    if (!activeSession) return;
+    if (callState === 'ending') return;
     setCallState('ending');
-
-    try {
-      await fetch('/api/calls', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callId: activeSession.id, duration: elapsed }),
-      });
-      toast.success('Call ended — Dossier compilation triggered');
-      setActiveSession(null);
+    
+    if (twilioCall) {
+      twilioCall.disconnect();
+    } else {
       setCallState('idle');
+      setActiveSession(null);
       setDialpad('');
       setCallerName('');
-      fetchSessions();
-    } catch {
-      toast.error('Failed to end call');
-      setCallState('idle');
     }
   };
 
@@ -152,7 +205,7 @@ export default function CallsPage() {
                 >
                   {k}
                   <span className="text-[8px] text-[#333] font-normal mt-0.5">
-                    {({'2':'ABC','3':'DEF','4':'GHI','5':'JKL','6':'MNO','7':'PQRS','8':'TUV','9':'WXYZ','*':'','+':'',0:'',1:'',4:'GHI','#':''})[k] || ''}
+                    {(({'2':'ABC','3':'DEF','4':'GHI','5':'JKL','6':'MNO','7':'PQRS','8':'TUV','9':'WXYZ','*':'','+':'',0:'',1:'','#':''}) as Record<string, string>)[k] || ''}
                   </span>
                 </button>
               ))}
@@ -184,7 +237,10 @@ export default function CallsPage() {
             ) : (
               <div className="flex gap-3 w-full">
                 <button
-                  onClick={() => setMuted(m => !m)}
+                  onClick={() => {
+                    if (twilioCall) twilioCall.mute(!muted);
+                    setMuted(m => !m);
+                  }}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all border ${muted ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-white/[0.04] border-white/[0.08] text-[#666]'}`}
                 >
                   {muted ? <MicOff size={16} /> : <Mic size={16} />}
@@ -205,13 +261,18 @@ export default function CallsPage() {
 
         {/* SIP Status */}
         <div className="bg-[#0d0d0d] border border-white/[0.06] rounded-xl p-4">
-          <div className="text-[10px] text-[#333] uppercase tracking-widest font-bold mb-3">SIP Connection</div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[10px] text-[#333] uppercase tracking-widest font-bold">SIP Connection</div>
+            <button onClick={setupTwilio} className="text-[#444] hover:text-white transition-colors" title="Reconnect Twilio">
+              <RefreshCw size={12} />
+            </button>
+          </div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <span className="text-xs text-[#555] font-medium">WebRTC Mode (Demo)</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${device ? 'bg-[#00ff88] blink' : 'bg-red-500'}`} />
+            <span className="text-xs text-[#555] font-medium">{device ? 'WebRTC Mode (Twilio SDK)' : 'Disconnected (Check Settings)'}</span>
           </div>
           <div className="text-[10px] text-[#2a2a2a] font-mono">
-            SIP: Configure in Settings →
+             Identity: IGOR-Agent
           </div>
         </div>
       </div>
