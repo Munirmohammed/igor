@@ -185,9 +185,21 @@ export default function CallsPage() {
                   value={callerName}
                   onChange={e => setCallerName(e.target.value)}
                 />
-                <div className="font-mono text-2xl font-bold text-white tracking-widest min-h-[36px]">
-                  {dialpad || <span className="text-[#2a2a2a]">———</span>}
-                </div>
+                <input
+                  className="w-full bg-transparent font-mono text-2xl font-bold text-white tracking-widest outline-none placeholder-[#2a2a2a]"
+                  placeholder="———"
+                  value={dialpad}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9+*#]/g, '');
+                    setDialpad(val.slice(0, 20));
+                  }}
+                  onPaste={e => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData('text');
+                    const cleaned = pasted.replace(/[^0-9+*#]/g, '');
+                    setDialpad(cleaned.slice(0, 20));
+                  }}
+                />
               </div>
             )}
           </div>
